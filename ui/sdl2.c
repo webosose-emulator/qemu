@@ -70,7 +70,7 @@ static struct sdl2_console *get_scon_from_window(uint32_t window_id)
 void sdl2_window_create(struct sdl2_console *scon)
 {
     int flags = 0;
-
+    char *filename;
     if (!scon->surface) {
         return;
     }
@@ -90,6 +90,20 @@ void sdl2_window_create(struct sdl2_console *scon)
                                          surface_width(scon->surface),
                                          surface_height(scon->surface),
                                          flags);
+    // Immediately loading of qemu icon after creation of window
+
+    /* Load a 32x32x4 image. White pixels are transparent. */
+    filename = qemu_find_file(QEMU_FILE_TYPE_BIOS, "qemu-icon.bmp");
+    if (filename) {
+        SDL_Surface *image = SDL_LoadBMP(filename);
+        if (image) {
+            uint32_t colorkey = SDL_MapRGB(image->format, 255, 255, 255);
+            SDL_SetColorKey(image, SDL_TRUE, colorkey);
+            SDL_SetWindowIcon(scon->real_window, image);
+        }
+        g_free(filename);
+    }
+
     scon->real_renderer = SDL_CreateRenderer(scon->real_window, -1, 0);
     if (scon->opengl) {
         scon->winctx = SDL_GL_GetCurrentContext();
@@ -572,14 +586,20 @@ static void handle_windowevent(SDL_Event *ev)
         }
         break;
     case SDL_WINDOWEVENT_SHOWN:
+// to stop the forced resume while minimize
+#if 0
         if (scon->hidden) {
             SDL_HideWindow(scon->real_window);
         }
+#endif
         break;
     case SDL_WINDOWEVENT_HIDDEN:
+// to stop the forced resume while minimize
+#if 0
         if (!scon->hidden) {
             SDL_ShowWindow(scon->real_window);
         }
+#endif
         break;
     }
 }
@@ -759,7 +779,7 @@ void sdl_display_init(DisplayState *ds, int full_screen, int no_frame)
 {
     int flags;
     uint8_t data = 0;
-    char *filename;
+    // char *filename;
     int i;
 
     if (no_frame) {
@@ -815,6 +835,8 @@ void sdl_display_init(DisplayState *ds, int full_screen, int no_frame)
         register_displaychangelistener(&sdl2_console[i].dcl);
     }
 
+// To stop loading of image from here and puting it while creating window
+#if 0
     /* Load a 32x32x4 image. White pixels are transparent. */
     filename = qemu_find_file(QEMU_FILE_TYPE_BIOS, "qemu-icon.bmp");
     if (filename) {
@@ -826,6 +848,7 @@ void sdl_display_init(DisplayState *ds, int full_screen, int no_frame)
         }
         g_free(filename);
     }
+#endif
 
     if (full_screen) {
         gui_fullscreen = 1;
