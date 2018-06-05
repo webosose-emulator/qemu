@@ -67,6 +67,9 @@ static struct sdl2_console *get_scon_from_window(uint32_t window_id)
     return NULL;
 }
 
+int MIN_WINDOW_WIDTH = 1280;
+int MIN_WINDOW_HEIGHT = 720;
+
 void sdl2_window_create(struct sdl2_console *scon)
 {
     int flags = 0;
@@ -102,6 +105,32 @@ void sdl2_window_create(struct sdl2_console *scon)
             SDL_SetWindowIcon(scon->real_window, image);
         }
         g_free(filename);
+    }
+
+    char *confFilename = qemu_find_file(QEMU_FILE_TYPE_BIOS, "qemu-conf");
+    if (confFilename) {
+        FILE* pFile = fopen(confFilename, "r");
+        if (pFile != NULL) {
+            char buf[256];
+            while (fgets(buf, sizeof(buf), pFile) != NULL) {
+                buf[strlen(buf) - 1] = '\0';
+                if (strstr(buf, "MinimumResolution") != NULL) {
+                    char* key_value = strtok(buf, ":");       // get Key
+                    key_value = strtok(NULL, ":");            // get Value
+                    if (strstr(key_value, "x") != NULL) {     // parsing Resolution
+                        char* wh = strtok(key_value, "x");    // get Width
+                        MIN_WINDOW_WIDTH = atoi(wh);
+                        wh = strtok(NULL, "x");               // get Height
+                        MIN_WINDOW_HEIGHT = atoi(wh);
+                        wh = NULL;
+                        break;
+                    }
+                    key_value = NULL;
+                }
+            }
+            fclose(pFile);
+        }
+        g_free(confFilename);
     }
 
     scon->real_renderer = SDL_CreateRenderer(scon->real_window, -1, 0);
@@ -555,9 +584,23 @@ static void handle_windowevent(SDL_Event *ev)
             memset(&info, 0, sizeof(info));
             info.width = ev->window.data1;
             info.height = ev->window.data2;
-            dpy_set_ui_info(scon->dcl.con, &info);
+
+            float aspectRatio = (float)surface_width(scon->surface) / (float)surface_height(scon->surface);
+            if (info.width < MIN_WINDOW_WIDTH) {        // apply minimum resolution
+                info.width = MIN_WINDOW_WIDTH;
+                info.height = MIN_WINDOW_HEIGHT;
+                SDL_SetWindowSize(scon->real_window,  info.width, info.height);
+            } else if (((float)info.width / (float)info.height) != aspectRatio) {       // fix the aspect ratio
+                info.height = info.width * surface_height(scon->surface) / surface_width(scon->surface);
+                SDL_SetWindowSize(scon->real_window,  info.width, info.height);
+            } else {
+                dpy_set_ui_info(scon->dcl.con, &info);
+            }
         }
         sdl2_redraw(scon);
+
+        sdl_send_mouse_event(scon, 0, 0, 0, 0, 1);
+        sdl_send_mouse_event(scon, 0, 0, 0, 0, 0);
         break;
     case SDL_WINDOWEVENT_EXPOSED:
         sdl2_redraw(scon);
