@@ -70,6 +70,9 @@ static struct sdl2_console *get_scon_from_window(uint32_t window_id)
 int MIN_WINDOW_WIDTH = 1280;
 int MIN_WINDOW_HEIGHT = 720;
 
+int MAX_WINDOW_WIDTH = 1920;
+int MAX_WINDOW_HEIGHT = 1080;
+
 void sdl2_window_create(struct sdl2_console *scon)
 {
     int flags = 0;
@@ -133,6 +136,11 @@ void sdl2_window_create(struct sdl2_console *scon)
         g_free(confFilename);
     }
 
+    SDL_DisplayMode DM;
+    SDL_GetDesktopDisplayMode(0, &DM);
+    MAX_WINDOW_WIDTH = DM.w;
+    MAX_WINDOW_HEIGHT = DM.h;
+
     scon->real_renderer = SDL_CreateRenderer(scon->real_window, -1, 0);
     if (scon->opengl) {
         scon->winctx = SDL_GL_GetCurrentContext();
@@ -158,9 +166,14 @@ void sdl2_window_resize(struct sdl2_console *scon)
         return;
     }
 
-    SDL_SetWindowSize(scon->real_window,
+    if ((MAX_WINDOW_WIDTH <= surface_width(scon->surface)) || (MAX_WINDOW_HEIGHT <= surface_height(scon->surface))) {
+        SDL_RestoreWindow(scon->real_window);
+        SDL_MaximizeWindow(scon->real_window);
+    } else {
+        SDL_SetWindowSize(scon->real_window,
                       surface_width(scon->surface),
                       surface_height(scon->surface));
+    }
 }
 
 static void sdl2_redraw(struct sdl2_console *scon)

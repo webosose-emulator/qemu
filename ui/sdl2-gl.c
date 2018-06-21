@@ -111,7 +111,7 @@ void sdl2_gl_switch(DisplayChangeListener *dcl,
                 (surface_height(old_surface) != surface_height(new_surface)))) {
         /* Old surface is not needed to be compared, & resized,
            as while rebooting it goes out of the window size */
-        //sdl2_window_resize(scon);
+        sdl2_window_resize(scon);
     }
 
     surface_gl_create_texture(scon->gls, scon->surface);
