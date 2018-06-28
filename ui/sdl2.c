@@ -54,6 +54,9 @@ static Notifier mouse_mode_notifier;
 #define SDL2_MAX_IDLE_COUNT (2 * GUI_REFRESH_INTERVAL_DEFAULT \
                              / SDL2_REFRESH_INTERVAL_BUSY + 1)
 
+#define MARGIN_SPACE 9/10
+#define ASPECTRATIO_16_9 9/16
+
 static void sdl_update_caption(struct sdl2_console *scon);
 
 static struct sdl2_console *get_scon_from_window(uint32_t window_id)
@@ -138,14 +141,17 @@ void sdl2_window_create(struct sdl2_console *scon)
 
     SDL_DisplayMode DM;
     SDL_GetDesktopDisplayMode(0, &DM);
-    MAX_WINDOW_WIDTH = DM.w;
-    MAX_WINDOW_HEIGHT = DM.h;
+    MAX_WINDOW_WIDTH = DM.w * MARGIN_SPACE;
+    MAX_WINDOW_HEIGHT = DM.w * ASPECTRATIO_16_9 * MARGIN_SPACE;
 
     scon->real_renderer = SDL_CreateRenderer(scon->real_window, -1, 0);
     if (scon->opengl) {
         scon->winctx = SDL_GL_GetCurrentContext();
     }
     sdl_update_caption(scon);
+
+    SDL_SetWindowMaximumSize(scon->real_window,  MAX_WINDOW_WIDTH, MAX_WINDOW_HEIGHT);
+    SDL_SetWindowMinimumSize(scon->real_window,  MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT);
 }
 
 void sdl2_window_destroy(struct sdl2_console *scon)
@@ -589,7 +595,6 @@ static void handle_windowevent(SDL_Event *ev)
     if (!scon) {
         return;
     }
-
     switch (ev->window.event) {
     case SDL_WINDOWEVENT_RESIZED:
         {
@@ -603,6 +608,8 @@ static void handle_windowevent(SDL_Event *ev)
                 info.width = MIN_WINDOW_WIDTH;
                 info.height = MIN_WINDOW_HEIGHT;
                 SDL_SetWindowSize(scon->real_window,  info.width, info.height);
+            } else if ( info.height >= MAX_WINDOW_HEIGHT || info.width >= MAX_WINDOW_WIDTH ) {
+                SDL_SetWindowSize(scon->real_window,  MAX_WINDOW_WIDTH, MAX_WINDOW_HEIGHT);
             } else if (((float)info.width / (float)info.height) != aspectRatio) {       // fix the aspect ratio
                 info.height = info.width * surface_height(scon->surface) / surface_width(scon->surface);
                 SDL_SetWindowSize(scon->real_window,  info.width, info.height);
