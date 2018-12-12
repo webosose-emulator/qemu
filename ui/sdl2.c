@@ -618,9 +618,10 @@ static void handle_windowevent(SDL_Event *ev)
             }
         }
         sdl2_redraw(scon);
-
-        sdl_send_mouse_event(scon, 0, 0, 0, 0, 1);
-        sdl_send_mouse_event(scon, 0, 0, 0, 0, 0);
+ 
+       /* disabling the dummy click events */
+       // sdl_send_mouse_event(scon, 0, 0, 0, 0, 1);
+       // sdl_send_mouse_event(scon, 0, 0, 0, 0, 0);
         break;
     case SDL_WINDOWEVENT_EXPOSED:
         sdl2_redraw(scon);
