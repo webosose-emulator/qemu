@@ -134,6 +134,11 @@ void sdl2_gl_refresh(DisplayChangeListener *dcl)
 void sdl2_gl_redraw(struct sdl2_console *scon)
 {
     assert(scon->opengl);
+/* Flushing to get new data to refresh */
+    if (scon->scanout_mode) { 
+	/* sdl2_gl_scanout_flush actually only care about the first argument. */
+	return sdl2_gl_scanout_flush(&scon->dcl, 0, 0, 0, 0); 
+    }
 
     if (scon->surface) {
         sdl2_gl_render_surface(scon);
